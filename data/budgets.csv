@@ -1,0 +1,4 @@
+id,merchant_id,cost_model,rate,quota,fill,fallback_budget_id
+1,100,CPC,0.10,50.00,0.00,2
+2,100,CPC,0.08,20.00,0.00,
+3,200,UEV,0.05,30.00,0.00,

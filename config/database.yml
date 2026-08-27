@@ -1,0 +1,21 @@
+# DATABASE_URL is injected by docker-compose.yml.
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
+  url: <%= ENV["DATABASE_URL"] %>
+
+development:
+  <<: *default
+
+# The test suite gets its own database, derived from DATABASE_URL by appending
+# a suffix to the database name. compose injects a single DATABASE_URL, and
+# pointing every environment at it would mean the concurrency spec's
+# truncation wipes the development data that produces the billed_stats dump —
+# and would leave Rails' recorded-environment guard tripping between runs.
+test:
+  <<: *default
+  url: <%= ENV.fetch("TEST_DATABASE_URL") { "#{ENV["DATABASE_URL"]}_test" } %>
+
+production:
+  <<: *default

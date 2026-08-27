@@ -1,0 +1,75 @@
+# Reference container topology for the Budget Biller task.
+# Three services only: app (CLI/specs), worker (scalable billing loop), postgres.
+# No web server (there is no HTTP surface) and no Redis (no job queue — see
+# blueprint/task-instructions.md §11 for why the claim mechanism replaces one).
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    image: ${COMPOSE_PROJECT_NAME:-budget_biller}/app
+    working_dir: /app
+    command: sleep infinity          # a shell to exec into; the work runs via rake tasks
+    volumes:
+      - .:/app
+      - bundle_cache:/usr/local/bundle
+    environment:
+      RAILS_ENV: ${RAILS_ENV:-development}
+      DATABASE_URL: postgres://${DB_USERNAME:-app}:${DB_PASSWORD:-secret}@postgres:5432/${DB_DATABASE:-budget_biller_development}
+      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-10}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [app]
+
+  # The billing worker. Scale it to prove Tier 2:
+  #   docker compose up --scale worker=3
+  # Each replica claims its own batches via FOR UPDATE SKIP LOCKED.
+  worker:
+    image: ${COMPOSE_PROJECT_NAME:-budget_biller}/app
+    working_dir: /app
+    command: bundle exec rails billing:work
+    volumes:
+      - .:/app
+      - bundle_cache:/usr/local/bundle
+    environment:
+      RAILS_ENV: ${RAILS_ENV:-development}
+      DATABASE_URL: postgres://${DB_USERNAME:-app}:${DB_PASSWORD:-secret}@postgres:5432/${DB_DATABASE:-budget_biller_development}
+      BILLING_POLL_INTERVAL: ${BILLING_POLL_INTERVAL:-5}
+      BILLING_LEASE_TTL: ${BILLING_LEASE_TTL:-60}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      app:
+        condition: service_started
+    stop_grace_period: 30s           # let SIGTERM finish the in-flight batch (task-instructions §6.7)
+    networks: [app]
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "${FORWARD_DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-budget_biller_development}
+      POSTGRES_USER: ${DB_USERNAME:-app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DB_USERNAME:-app}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [app]
+
+networks:
+  app:
+    driver: bridge
+
+volumes:
+  pgdata:
+  bundle_cache:
