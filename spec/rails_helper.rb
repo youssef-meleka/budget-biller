@@ -5,9 +5,7 @@ require_relative '../config/environment'
 # Prevent database truncation if the environment is production
 abort("The Rails environment is running in production mode!") if Rails.env.production?
 # Uncomment the line below in case you have `--require rails_helper` in the `.rspec` file
-# that will avoid ra  # Trap 1: RSpec's per-example transaction is never committed, and worker
-  # threads use *different* connections, so they would not see the test's data
-  # at all — the spec would pass becau  se there was no work to contend over.ils generators crashing because migrations haven't been run yet
+# that will avoid rails generators crashing because migrations haven't been run yet
 # return unless Rails.env.test?
 require 'rspec/rails'
 # Add additional requires below this line. Rails is not loaded until this point!
@@ -52,6 +50,12 @@ RSpec.configure do |config|
   # If you're not using ActiveRecord, or you'd prefer not to run each of your
   # examples within a transaction, remove the following line or assign false
   # instead of true.
+  #
+  # Trap: this per-example transaction is never committed, and worker threads
+  # use *different* connections, so they would not see the test's data at all
+  # — the concurrency spec would pass because there was no work to contend
+  # over. That spec must opt out of transactional fixtures and use
+  # DatabaseCleaner's truncation strategy instead.
   config.use_transactional_fixtures = true
 
   # You can uncomment this line to turn off ActiveRecord support entirely.

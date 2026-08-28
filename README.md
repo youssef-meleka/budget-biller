@@ -147,3 +147,4 @@ would not be if a merchant had two independent entry budgets.
 - [docs/infrastructure/02-technology-choices.md](docs/infrastructure/02-technology-choices.md) — why Postgres, Ruby, Rails, and the rest of the stack were chosen
 - [docs/infrastructure/03-concepts-implemented.md](docs/infrastructure/03-concepts-implemented.md) — every concurrency/idempotency/reliability concept, with code snippets and file references
 - [docker/README.md](docker/README.md) — what Docker provides here, every file's purpose, first-time setup, and daily-use commands
+- [docs/Test Run/README.md](docs/Test%20Run/README.md) — a full end-to-end transcript of a real run: every command in order, real output at each step, and the invariants checked before and after the correction
