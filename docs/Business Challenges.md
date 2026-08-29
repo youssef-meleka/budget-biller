@@ -1,7 +1,6 @@
 # Business Challenges
 
-What this system is actually protecting, why each requirement in the
-[brief](../candidate-brief.md) exists as a commercial problem before it is a technical one, and how
+What this system is actually protecting, why each requirement in the brief `candidate-brief.md` exists as a commercial problem before it is a technical one, and how
 the pipeline answers it.
 
 Every claim here is evidenced by a real end-to-end run, captured in
