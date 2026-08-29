@@ -15,6 +15,7 @@ docker compose exec app bin/rails "billing:ingest[data/stats_2026-08-20.csv]"
 docker compose exec app bin/rails "billing:ingest[data/stats_2026-08-21.csv]"
 docker compose up -d --scale worker=3      # workers claim and bill on their own
 docker compose exec app bin/rails billing:verify   # the three invariants, executable
+docker compose exec -e RAILS_ENV=test app bin/rails db:create db:schema:load   # one-time, separate test DB
 docker compose exec -e RAILS_ENV=test app bundle exec rspec
 ```
 
@@ -22,7 +23,7 @@ docker compose exec -e RAILS_ENV=test app bundle exec rspec
 `billed_stats.csv` is the dump of all three provided files, including the correction.
 
 Full container reference — what each service/file does, first-time setup, and the daily-use command
-list — is in [docker/README.md](docker/README.md).
+list — is in [docs/Docker/README.md](docs/Docker/README.md).
 
 ## Concurrency mechanism, and why
 
@@ -146,5 +147,6 @@ would not be if a merchant had two independent entry budgets.
 - [docs/infrastructure/01-file-map.md](docs/infrastructure/01-file-map.md) — every folder and file, what it does
 - [docs/infrastructure/02-technology-choices.md](docs/infrastructure/02-technology-choices.md) — why Postgres, Ruby, Rails, and the rest of the stack were chosen
 - [docs/infrastructure/03-concepts-implemented.md](docs/infrastructure/03-concepts-implemented.md) — every concurrency/idempotency/reliability concept, with code snippets and file references
-- [docker/README.md](docker/README.md) — what Docker provides here, every file's purpose, first-time setup, and daily-use commands
+- [docs/Docker/README.md](docs/Docker/README.md) — what Docker provides here, every file's purpose, first-time setup, and daily-use commands
 - [docs/Test Run/README.md](docs/Test%20Run/README.md) — a full end-to-end transcript of a real run: every command in order, real output at each step, and the invariants checked before and after the correction
+- [docs/Business Challenges.md](docs/Business%20Challenges.md) — the commercial problem behind each requirement, what failure costs, and the limitations worth knowing before relying on it

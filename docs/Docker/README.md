@@ -67,9 +67,12 @@ docker compose up -d --scale worker=3      # workers claim and bill on their own
 docker compose exec app bin/rails billing:verify   # confirms the invariants hold
 ```
 
-Finally, confirm the test suite passes against its own database:
+Finally, confirm the test suite passes against its own database. The test suite runs against a
+separate database (`_test`-suffixed — see the note below), which does not exist yet on a fresh
+volume, so it needs to be created once:
 
 ```bash
+docker compose exec -e RAILS_ENV=test app bin/rails db:create db:schema:load
 docker compose exec -e RAILS_ENV=test app bundle exec rspec
 ```
 
