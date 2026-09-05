@@ -44,21 +44,13 @@ module Billing
           budget_id = budget.fallback_budget_id
         end
 
-        if remaining_engagements.positive?
-          # No budget left in the chain could absorb the rest — the unbilled
-          # bucket keeps I1 balancing.
-          premium_here = premium_for(remaining_premium:, engagements_billed: remaining_engagements)
-          allocations << Allocation.new(budget_id: UNBILLED_BUDGET_ID, engagements: remaining_engagements,
-                                         premium_engagements: premium_here, amount: BigDecimal(0))
-          remaining_premium -= premium_here
-          remaining_engagements = 0
-        end
-
-        if remaining_premium.positive?
-          # Premium overage with nothing left to bill it to: a sentinel row
-          # with engagements = 0 so I1 is never double-counted.
-          allocations << Allocation.new(budget_id: UNBILLED_BUDGET_ID, engagements: 0,
-                                         premium_engagements: remaining_premium, amount: BigDecimal(0))
+        # (M1) Whatever the chain could not absorb — leftover engagements, leftover
+        # premium, or both — becomes ONE bucket row, keeping I1 and I2 balanced.
+        if remaining_engagements.positive? || remaining_premium.positive?
+          allocations << Allocation.new(budget_id: UNBILLED_BUDGET_ID,
+                                         engagements: remaining_engagements,
+                                         premium_engagements: remaining_premium,
+                                         amount: BigDecimal(0))
         end
 
         assert_conservation!(record, allocations)

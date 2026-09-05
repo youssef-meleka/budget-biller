@@ -180,6 +180,23 @@ RSpec.describe Billing::Allocator do
     expect(result.find { _1.budget_id == described_class::UNBILLED_BUDGET_ID }.engagements).to eq(8)
   end
 
+  # Regression (M1).
+  it "emits exactly one bucket row when engagements AND premium both overflow" do
+    result = described_class.call(record: record(engagements: 11, premium: 20),
+                                   budgets: { 1 => budget(id: 1, rate: 1, quota: 10) },
+                                   primary_budget_id: 1)
+
+    buckets = result.select { _1.budget_id == described_class::UNBILLED_BUDGET_ID }
+    expect(buckets.size).to eq(1) # two would collide on the unique index
+
+    expect(buckets.first.engagements).to eq(1)          # 11 wanted, 10 afforded
+    expect(buckets.first.premium_engagements).to eq(10) # 20 carried, 10 rode along
+    expect(buckets.first.amount).to eq(0)
+
+    expect(result.sum(&:engagements)).to eq(11)
+    expect(result.sum(&:premium_engagements)).to eq(20)
+  end
+
   # I1 + I2 as a property of the pure function, over many shapes at once.
   it "conserves both ledgers for every input shape" do
     [ [ 0, 0 ], [ 1, 0 ], [ 10, 3 ], [ 10, 10 ], [ 999, 500 ] ].each do |engagements, premium|

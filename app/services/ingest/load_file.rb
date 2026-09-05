@@ -17,10 +17,13 @@ module Ingest
 
     def call
       rows = parse # all I/O happens before any write
-
-      upsert_pending_engagements(rows)
       batch_keys = rows.map { |row| [ row[:date], row[:merchant_id] ] }.uniq
-      touch_batches(batch_keys)
+
+      # (M2) Issue
+      ActiveRecord::Base.transaction do
+        upsert_pending_engagements(rows)
+        touch_batches(batch_keys)
+      end
 
       Rails.logger.info({
         event: "ingest.completed", file: @path, rows: rows.size, batches: batch_keys.size
