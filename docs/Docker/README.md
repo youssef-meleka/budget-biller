@@ -76,6 +76,42 @@ docker compose exec -e RAILS_ENV=test app bin/rails db:create db:schema:load
 docker compose exec -e RAILS_ENV=test app bundle exec rspec
 ```
 
+## Single trial
+
+Assumes the image is already built (`docker compose build` has run at least once) and containers
+may be freshly created or previously stopped. Run these in order for one complete pass — start to
+finish, sample data in, invariants verified:
+
+```bash
+docker compose up -d postgres app                                 # start the database and the app shell
+docker compose exec app bin/rails db:create db:migrate db:seed    # safe to re-run; no-ops if already done
+
+docker compose exec app bin/rails "billing:ingest[data/stats_2026-08-20.csv]"
+docker compose exec app bin/rails "billing:ingest[data/stats_2026-08-21.csv]"
+docker compose up -d --scale worker=3                              # workers claim and bill on their own
+docker compose exec app bin/rails billing:verify                   # confirms the invariants hold
+
+# Tier 3: apply the correction file — re-opens only the batch(es) it actually changed
+docker compose exec app bin/rails "billing:ingest[data/stats_2026-08-20_v2.csv]"
+docker compose exec app bin/rails billing:drain                    # bills the re-opened batch(es), then exits
+docker compose exec app bin/rails billing:verify                   # confirms invariants still hold post-reconciliation
+```
+
+`billing:drain` above forces the re-opened batch through immediately rather than waiting on the
+already-running workers' next poll cycle (`BILLING_POLL_INTERVAL`) — they'd pick it up on their own
+eventually, since `billing:drain` and `billing:work` claim work the same way, but `drain` is
+synchronous and exits once nothing's left, making the trial deterministic.
+
+Prefer a single deterministic pass over scaling workers entirely? Skip
+`docker compose up -d --scale worker=3` above and run the billing loop synchronously in the `app`
+container instead — `billing:drain` works the same way whether or not any `worker` replicas exist.
+
+To tear down afterward:
+
+```bash
+docker compose down          # remove containers, keep the database (pgdata volume survives)
+```
+
 ## Daily-use commands
 
 **Start / stop**
